@@ -46,7 +46,7 @@ export default function ThreadBuilder() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to post thread');
+        throw new Error(data.message || 'Failed to post thread,try again :)');
       }
 
       // Show success message
