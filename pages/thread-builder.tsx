@@ -86,8 +86,7 @@ export default function ThreadBuilder() {
               setIsGenerating={setIsGenerating}
             />
           </div>
-
-          //Thread Preview Generated
+          
           {/* Right column: Thread Preview */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
