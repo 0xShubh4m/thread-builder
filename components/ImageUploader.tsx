@@ -166,4 +166,219 @@ export default function ImageUploader({
       if (debounceRef.current) {
         window.clearTimeout(debounceRef.current);
       }
-      debounceRef.current = window.setTimeout(() =>
+      debounceRef.current = window.setTimeout(() => {
+        searchUnsplash(q);
+      }, 350);
+    },
+    [searchUnsplash]
+  );
+
+  const onSearchSubmit = useCallback(() => searchUnsplash(searchQuery), [
+    searchUnsplash,
+    searchQuery,
+  ]);
+
+  const handleUpload = useCallback(async () => {
+    if (!selectedFile && !selectedUnsplash) {
+      toast({
+        title: "No media selected",
+        description: `Please select a ${type} to upload.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 600)); // mock upload
+
+      // resolve URL
+      const url = selectedFile ? previewUrl : selectedUnsplash?.url;
+      if (!url) throw new Error("No URL resolved");
+
+      const finalAlt =
+        altText?.trim() ||
+        (selectedUnsplash?.alt ?? (selectedFile?.name ?? type).toString());
+
+      onImageSelected(url, finalAlt);
+      toast({
+        title: "Upload successful",
+        description: `${isImage ? "Image" : "Video"} added to your thread.`,
+      });
+
+      // reset only the mutable bits; keep tab and search history
+      setSelectedFile(null);
+      setSelectedUnsplash(null);
+      setAltText("");
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      setTab("upload");
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Upload failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    altText,
+    isImage,
+    onImageSelected,
+    previewUrl,
+    selectedFile,
+    selectedUnsplash,
+    toast,
+    type,
+  ]);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{isImage ? "Add Image" : "Add Video"}</DialogTitle>
+        </DialogHeader>
+
+        <Tabs
+          value={tab}
+          onValueChange={(v: typeof tab) => setTab(v)}
+          className="w-full mt-2"
+          defaultValue="upload"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">Upload</TabsTrigger>
+            {isImage ? (
+              <TabsTrigger value="unsplash">Unsplash</TabsTrigger>
+            ) : (
+              <TabsTrigger value="unsplash" disabled>
+                Unsplash (Images Only)
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {/* UPLOAD TAB */}
+          <TabsContent value="upload" className="mt-4 space-y-4">
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="media-upload">
+                {isImage ? "Image" : "Video"}
+              </Label>
+              <Input
+                id="media-upload"
+                type="file"
+                accept={isImage ? VALID_IMAGE_TYPES.join(",") : VALID_VIDEO_TYPES.join(",")}
+                onChange={handleFileSelect}
+                aria-label={`Select a ${type} file`}
+              />
+            </div>
+
+            {previewUrl && (
+              <div className="mt-4">
+                {isImage ? (
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-64 max-w-full object-contain rounded-md"
+                  />
+                ) : (
+                  <video
+                    src={previewUrl ?? ""}
+                    controls
+                    className="max-h-64 max-w-full rounded-md"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="alt-text">Alt Text</Label>
+              <Input
+                id="alt-text"
+                placeholder="Describe the media for accessibility"
+                value={altText}
+                onChange={(e) => setAltText(e.target.value)}
+              />
+            </div>
+          </TabsContent>
+
+          {/* UNSPLASH TAB */}
+          <TabsContent value="unsplash" className="mt-4 space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Search Unsplash images…"
+                value={searchQuery}
+                onChange={onSearchChange}
+                onKeyDown={(e) => e.key === "Enter" && onSearchSubmit()}
+                aria-label="Search Unsplash"
+              />
+              <Button onClick={onSearchSubmit} disabled={isLoading} title="Search">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            {unsplashImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {unsplashImages.map((img) => {
+                  const active = selectedUnsplash?.id === img.id;
+                  return (
+                    <button
+                      key={img.id}
+                      type="button"
+                      className={`relative cursor-pointer overflow-hidden rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        active ? "border-blue-500 ring-2 ring-blue-500" : "border-transparent"
+                      }`}
+                      onClick={() => setSelectedUnsplash(img)}
+                      aria-pressed={active}
+                      title={img.alt}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={img.alt} className="h-32 w-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {selectedUnsplash && (
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="unsplash-alt-text">Alt Text</Label>
+                <Input
+                  id="unsplash-alt-text"
+                  placeholder="Describe the image for accessibility"
+                  value={altText}
+                  onChange={(e) => setAltText(e.target.value)}
+                />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleUpload} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
